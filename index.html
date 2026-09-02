@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>キャリアクリッカー</title>
+<style>
+  :root{
+    --bg:        #0D1117;
+    --panel:     #161B22;
+    --panel-2:   #1C2330;
+    --line:      #2A3140;
+    --text:      #E6EDF3;
+    --text-dim:  #8B95A5;
+    --n-color:   #4FC3F7; /* n型：電子（青） */
+    --p-color:   #FFB74D; /* p型：正孔（橙） */
+    --ok:        #4CAF50;
+    --danger:    #E5534B;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(79,195,247,0.07), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(255,183,77,0.07), transparent 40%),
+      var(--bg);
+    color:var(--text);
+    font-family:"Hiragino Sans","Yu Gothic",system-ui,-apple-system,sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:20px;
+  }
+  .num{ font-family:"SFMono-Regular",Consolas,"Courier New",monospace; }
+
+  #app{
+    width:100%;
+    max-width:520px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    min-height:640px;
+    display:flex;
+    flex-direction:column;
+  }
+  .screen{ display:none; flex-direction:column; flex:1; padding:28px 24px; }
+  .screen.active{ display:flex; }
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--line);
+  }
+  .brand{ font-size:15px; letter-spacing:0.02em; color:var(--text-dim); }
+  .brand b{ color:var(--text); font-weight:600; }
+
+  h1{ font-size:24px; margin:0 0 6px; font-weight:700; }
+  h2{ font-size:18px; margin:0 0 14px; font-weight:600; }
+  p.lead{ color:var(--text-dim); font-size:14px; line-height:1.7; margin:0 0 22px; }
+
+  .stack{ display:flex; flex-direction:column; gap:10px; margin-top:auto; }
+  .btn{
+    appearance:none; border:1px solid var(--line); background:var(--panel-2);
+    color:var(--text); padding:14px 16px; border-radius:10px; font-size:15px;
+    cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center;
+    transition:border-color .15s, background .15s;
+  }
+  .btn:hover{ border-color:var(--n-color); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .btn.primary{ background:var(--n-color); color:#06202B; border-color:var(--n-color); font-weight:700; }
+  .btn.primary:hover{ filter:brightness(1.08); }
+  .btn.ghost{ background:transparent; }
+  .btn small{ color:inherit; opacity:.65; font-weight:400; font-size:12px; }
+
+  .choice-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+  .chip{
+    border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim);
+    padding:9px 14px; border-radius:999px; cursor:pointer; font-size:13px;
+  }
+  .chip.selected{ border-color:var(--p-color); color:var(--p-color); }
+
+  /* --- ゲーム画面 --- */
+  .hud{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .hud .score{ font-size:30px; font-weight:700; }
+  .hud .timer{ font-size:16px; color:var(--text-dim); }
+  .hud .dps{ font-size:12px; color:var(--n-color); }
+
+  .gauge-wrap{ margin-bottom:18px; }
+  .gauge-label{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .gauge{ height:10px; border-radius:6px; background:var(--panel-2); border:1px solid var(--line); overflow:hidden; }
+  .gauge-fill{ height:100%; background:linear-gradient(90deg,var(--n-color),var(--p-color)); width:0%; transition:width .15s; }
+
+  .click-target{
+    width:150px; height:150px; margin:8px auto 20px; border-radius:16px;
+    background:linear-gradient(160deg,var(--n-color),var(--p-color));
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none; border:none;
+    box-shadow:0 6px 0 rgba(0,0,0,.35);
+    color:#06202B; font-weight:700; font-size:14px; text-align:center; padding:10px;
+  }
+  .click-target:active{ transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.35); }
+
+  .upgrades{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:190px; padding-right:2px; margin-bottom:14px; }
+  .upg{
+    display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--line); background:var(--panel-2); border-radius:8px;
+    padding:8px 10px; font-size:12.5px; cursor:pointer;
+  }
+  .upg:hover{ border-color:var(--p-color); }
+  .upg:disabled, .upg.disabled{ opacity:.35; cursor:not-allowed; }
+  .upg .u-name{ display:flex; flex-direction:column; text-align:left; }
+  .upg .u-name b{ font-size:13px; }
+  .upg .u-name span{ color:var(--text-dim); font-size:11px; }
+  .upg .u-cost{ font-size:12px; color:var(--p-color); white-space:nowrap; padding-left:10px; }
+
+  .foot-actions{ display:flex; gap:8px; margin-top:auto; }
+  .foot-actions .btn{ flex:1; text-align:center; justify-content:center; }
+
+  /* --- リザルト --- */
+  .result-badge{
+    text-align:center; padding:26px 0 18px;
+  }
+  .result-badge .big{ font-size:22px; font-weight:700; margin-bottom:4px; }
+  .result-badge.clear .big{ color:var(--ok); }
+  .result-badge.fail .big{ color:var(--danger); }
+  .result-rows{ border-top:1px solid var(--line); }
+  .row{ display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .row .k{ color:var(--text-dim); }
+  .drop-banner{
+    margin:16px 0; padding:12px 14px; border-radius:10px;
+    background:rgba(255,183,77,0.12); border:1px solid var(--p-color); color:var(--p-color);
+    font-size:13px; text-align:center;
+  }
+
+  /* --- ランキング --- */
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  th,td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  th{ color:var(--text-dim); font-weight:500; font-size:12px; }
+  .empty-note{ color:var(--text-dim); font-size:13px; text-align:center; padding:30px 0; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ ホーム画面 ============ -->
+  <section class="screen active" id="screen-home">
+    <div class="topbar"><span class="brand">キャリア<b>クリッカー</b></span></div>
+    <h1>キャリアクリッカー</h1>
+    <p class="lead">n型半導体を集めて、より深いキャリア構造の探索を進めよう。</p>
+    <div class="stack">
+      <button class="btn primary" onclick="go('difficulty')">プレイをはじめる</button>
+      <button class="btn" onclick="go('howto')">遊び方</button>
+      <button class="btn" onclick="renderRanking(); go('ranking')">ランキング</button>
+    </div>
+  </section>
+
+  <!-- ============ 説明画面 ============ -->
+  <section class="screen" id="screen-howto">
+    <div class="topbar"><span class="brand">遊び方</span></div>
+    <p class="lead" style="margin-bottom:14px;">
+      中央の画像をクリック（タップ）してスコアを稼ぎます。<br><br>
+      スコアを消費して強化を解放すると、1クリックあたりの獲得量や、毎秒自動で入るスコア（自動生産）が増えていきます。<br><br>
+      難易度ごとのクリア目標スコアに到達したらクリアです。時間制限はありませんが、クリアまでにかかった時間が記録され、短いほどランキングで上位になります。<br><br>
+      クリア後は低確率で「n型半導体」がドロップし、次回以降のプレイで役立つ恒久アイテムとして所持数に加算されます。
+    </p>
+    <div class="stack"><button class="btn ghost" onclick="go('home')">ホームへ戻る</button></div>
+  </section>
+
+  <!-- ============ 難易度選択画面 ============ -->
+  <section class="screen" id="screen-difficulty">
+    <div class="topbar"><span class="brand">難易度選択</span></div>
+    <h2>難易度</h2>
+    <div class="choice-row" id="diff-choices"></div>
+    <p class="lead" id="diff-summary"></p>
+    <div class="stack">
+      <button class="btn primary" onclick="startGame()">この設定でスタート</button>
+      <button class="btn ghost" onclick="go('home')">ホームへ戻る</button>
+    </div>
+  </section>
+
+  <!-- ============ ゲーム画面 ============ -->
+  <section class="screen" id="screen-game">
+    <div class="hud">
+      <div>
+        <div class="score num" id="hud-score">0</div>
+        <div class="dps num" id="hud-dps">自動生産 0 /秒</div>
+      </div>
+      <div class="timer num" id="hud-timer">経過 00:00</div>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-label">
+        <span id="gauge-text">達成率 0%</span>
+        <span id="gauge-target" class="num"></span>
+      </div>
+      <div class="gauge"><div class="gauge-fill" id="gauge-fill"></div></div>
+    </div>
+
+    <button class="click-target" id="click-target" onclick="onClick()">n2.JPG<br>タップ</button>
+
+    <div class="upgrades" id="upgrade-list"></div>
+
+    <div class="foot-actions">
+      <button class="btn ghost" onclick="abortGame()">中断してホームへ</button>
+    </div>
+  </section>
+
+  <!-- ============ リザルト画面 ============ -->
+  <section class="screen" id="screen-result">
+    <div class="topbar"><span class="brand">リザルト</span></div>
+    <div class="result-badge" id="result-badge">
+      <div class="big" id="result-title">-</div>
+      <div class="text-dim" id="result-sub" style="color:var(--text-dim); font-size:13px;"></div>
+    </div>
+    <div class="result-rows">
+      <div class="row"><span class="k">難易度</span><span class="num" id="r-diff">-</span></div>
+      <div class="row"><span class="k">最終スコア</span><span class="num" id="r-score">-</span></div>
+      <div class="row"><span class="k">クリアタイム</span><span class="num" id="r-time">-</span></div>
+      <div class="row"><span class="k">所持n型半導体</span><span class="num" id="r-sc">-</span></div>
+    </div>
+    <div id="drop-banner" style="display:none;" class="drop-banner"></div>
+    <div class="stack">
+      <button class="btn primary" onclick="go('difficulty')">もう一度プレイ</button>
+      <button class="btn ghost" onclick="go('home')">ホームへ戻る</button>
+    </div>
+  </section>
+
+  <!-- ============ ランキング画面 ============ -->
+  <section class="screen" id="screen-ranking">
+    <div class="topbar"><span class="brand">ランキング</span></div>
+    <p class="lead" style="margin-bottom:10px;">難易度 ＞ スコア ＞ クリアタイム の順で並びます（このセッション内のみ保持）。</p>
+    <div id="ranking-body"></div>
+    <div class="stack"><button class="btn ghost" onclick="go('home')">ホームへ戻る</button></div>
+  </section>
+
+</div>
+
+<script>
+/* =========================================================================
+   CONFIG — ゲームバランス調整用（ここの数値を変えるだけで調整可能）
+   ========================================================================= */
+const CONFIG = {
+  // 難易度：クリア目標スコア（"低＞高" の順で並べる: n → pn → p）
+  difficulties: [
+    { id:'n',  label:'n（初級）',  target:1000 },
+    { id:'pn', label:'pn（中級）', target:3000 },
+    { id:'p',  label:'p（上級）',  target:5000 },
+  ],
+  // レアドロップ確率（クリア時に判定）。0.1 = 10%
+  rareDropRate: 0.10,
+  // レアドロップ時の獲得量 = クリア目標スコア × この割合
+  rareDropRatio: 0.30,
+
+  // 強化アイテム 全10種類（クリック強化2 + 自動生産8）
+  // baseCost: 初期解放コスト / costMultiplier: 解放を重ねるごとのコスト上昇倍率（1〜6倍の範囲で個別設定）
+  // value: 1レベルごとに増える効果量
+  upgrades: [
+    // --- クリック強化（2種） ---
+    { id:'c1', type:'click', name:'クリック力+1',  desc:'1クリックの獲得量+1',        baseCost:20,   costMultiplier:1.6, value:1 },
+    { id:'c2', type:'click', name:'クリック力+5',  desc:'1クリックの獲得量+5',        baseCost:250,  costMultiplier:1.8, value:5 },
+
+    // --- 自動生産（8種） ---
+    { id:'a1', type:'auto', name:'ドナー準位',     desc:'自動生産 +1/秒',   baseCost:15,    costMultiplier:1.15, value:1 },
+    { id:'a2', type:'auto', name:'アクセプタ準位', desc:'自動生産 +2/秒',   baseCost:60,    costMultiplier:1.3,  value:2 },
+    { id:'a3', type:'auto', name:'接合面拡張',     desc:'自動生産 +4/秒',   baseCost:150,   costMultiplier:1.5,  value:4 },
+    { id:'a4', type:'auto', name:'空乏層強化',     desc:'自動生産 +8/秒',   baseCost:400,   costMultiplier:1.8,  value:8 },
+    { id:'a5', type:'auto', name:'キャリア増倍',   desc:'自動生産 +15/秒',  baseCost:900,   costMultiplier:2.2,  value:15 },
+    { id:'a6', type:'auto', name:'格子欠陥制御',   desc:'自動生産 +30/秒',  baseCost:2000,  costMultiplier:3,    value:30 },
+    { id:'a7', type:'auto', name:'量子井戸層',     desc:'自動生産 +60/秒',  baseCost:5000,  costMultiplier:4,    value:60 },
+    { id:'a8', type:'auto', name:'超格子構造',     desc:'自動生産 +120/秒', baseCost:12000, costMultiplier:6,    value:120 },
+  ],
+};
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+let state = null;      // 現在進行中のプレイのstate
+let semiconductorCount = 0; // 恒久所持数（n型半導体）。セッション内のみ保持
+let rankings = [];      // {diffIndex, diffLabel, score, cleared, timeSec}
+let tickHandle = null;
+
+function newRunState(diffIndex){
+  return {
+    diffIndex,
+    elapsed: 0,
+    score: 0,
+    clickPower: 1,
+    autoPerSec: 0,
+    levels: CONFIG.upgrades.map(()=>0),
+    finished: false,
+  };
+}
+
+function upgradeCost(u, level){
+  return Math.ceil(u.baseCost * Math.pow(u.costMultiplier, level));
+}
+
+/* =========================================================================
+   画面遷移
+   ========================================================================= */
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(name === 'difficulty') renderDifficultyScreen();
+}
+
+/* =========================================================================
+   難易度選択画面
+   ========================================================================= */
+let selectedDiff = 0;
+
+function renderDifficultyScreen(){
+  const dc = document.getElementById('diff-choices');
+  dc.innerHTML = '';
+  CONFIG.difficulties.forEach((d,i)=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (i===selectedDiff ? ' selected' : '');
+    chip.textContent = d.label + '（目標 ' + d.target + '）';
+    chip.onclick = ()=>{ selectedDiff = i; renderDifficultyScreen(); };
+    dc.appendChild(chip);
+  });
+
+  document.getElementById('diff-summary').textContent =
+    CONFIG.difficulties[selectedDiff].label + ' ／ 所持n型半導体: ' + semiconductorCount + '個';
+}
+
+/* =========================================================================
+   ゲーム開始・進行
+   ========================================================================= */
+function startGame(){
+  state = newRunState(selectedDiff);
+  renderUpgrades();
+  updateHud();
+  go('game');
+  if(tickHandle) clearInterval(tickHandle);
+  tickHandle = setInterval(gameTick, 1000);
+}
+
+function gameTick(){
+  if(!state || state.finished) return;
+  state.elapsed += 1;
+  state.score += state.autoPerSec;
+  const target = CONFIG.difficulties[state.diffIndex].target;
+
+  if(state.score >= target){
+    finishGame();
+    return;
+  }
+  updateHud();
+}
+
+function onClick(){
+  if(!state || state.finished) return;
+  state.score += state.clickPower;
+  const target = CONFIG.difficulties[state.diffIndex].target;
+  if(state.score >= target){
+    finishGame();
+    return;
+  }
+  updateHud();
+}
+
+function updateHud(){
+  const target = CONFIG.difficulties[state.diffIndex].target;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-dps').textContent = '自動生産 ' + state.autoPerSec + ' /秒';
+  document.getElementById('hud-timer').textContent = '経過 ' + fmtTime(state.elapsed);
+
+  const pct = Math.min(100, Math.floor((state.score/target)*100));
+  document.getElementById('gauge-fill').style.width = pct + '%';
+  document.getElementById('gauge-text').textContent = '達成率 ' + pct + '%';
+  document.getElementById('gauge-target').textContent = state.score + ' / ' + target;
+
+  renderUpgrades();
+}
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60).toString().padStart(2,'0');
+  const s = Math.floor(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+function renderUpgrades(){
+  const wrap = document.getElementById('upgrade-list');
+  wrap.innerHTML = '';
+  CONFIG.upgrades.forEach((u, idx)=>{
+    const level = state.levels[idx];
+    const cost = upgradeCost(u, level);
+    const affordable = state.score >= cost;
+
+    const row = document.createElement('div');
+    row.className = 'upg' + (affordable ? '' : ' disabled');
+    row.onclick = ()=> buyUpgrade(idx);
+
+    const left = document.createElement('div');
+    left.className = 'u-name';
+    left.innerHTML = '<b>' + u.name + ' Lv.' + level + '</b><span>' + u.desc + '</span>';
+
+    const right = document.createElement('div');
+    right.className = 'u-cost';
+    right.textContent = cost + ' pt';
+
+    row.appendChild(left);
+    row.appendChild(right);
+    wrap.appendChild(row);
+  });
+}
+
+function buyUpgrade(idx){
+  const u = CONFIG.upgrades[idx];
+  const level = state.levels[idx];
+  const cost = upgradeCost(u, level);
+  if(state.score < cost) return;
+
+  state.score -= cost;
+  state.levels[idx] += 1;
+  if(u.type === 'click') state.clickPower += u.value;
+  else state.autoPerSec += u.value;
+
+  updateHud();
+}
+
+function abortGame(){
+  if(tickHandle) clearInterval(tickHandle);
+  state = null;
+  go('home');
+}
+
+/* =========================================================================
+   終了処理・リザルト
+   ========================================================================= */
+function finishGame(){
+  state.finished = true;
+  if(tickHandle) clearInterval(tickHandle);
+
+  const diff = CONFIG.difficulties[state.diffIndex];
+  let dropped = false;
+  let dropAmount = 0;
+
+  if(Math.random() < CONFIG.rareDropRate){
+    dropped = true;
+    dropAmount = Math.floor(diff.target * CONFIG.rareDropRatio);
+    semiconductorCount += dropAmount;
+  }
+  rankings.push({
+    diffIndex: state.diffIndex,
+    diffLabel: diff.label,
+    score: state.score,
+    timeSec: state.elapsed,
+  });
+
+  renderResult(dropped, dropAmount);
+  go('result');
+}
+
+function renderResult(dropped, dropAmount){
+  const diff = CONFIG.difficulties[state.diffIndex];
+  const badge = document.getElementById('result-badge');
+  badge.className = 'result-badge clear';
+  document.getElementById('result-title').textContent = 'クリア';
+  document.getElementById('result-sub').textContent = '目標スコア ' + diff.target + ' に到達しました';
+
+  document.getElementById('r-diff').textContent = diff.label;
+  document.getElementById('r-score').textContent = state.score;
+  document.getElementById('r-time').textContent = fmtTime(state.elapsed);
+  document.getElementById('r-sc').textContent = semiconductorCount + ' 個';
+
+  const banner = document.getElementById('drop-banner');
+  if(dropped){
+    banner.style.display = 'block';
+    banner.textContent = 'レアドロップ： n型半導体 +' + dropAmount + '個';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+/* =========================================================================
+   ランキング画面
+   ========================================================================= */
+function renderRanking(){
+  const body = document.getElementById('ranking-body');
+  if(rankings.length === 0){
+    body.innerHTML = '<div class="empty-note">まだクリア記録がありません</div>';
+    return;
+  }
+  const sorted = [...rankings].sort((a,b)=>{
+    if(b.diffIndex !== a.diffIndex) return b.diffIndex - a.diffIndex; // 難易度高いほど上位
+    if(b.score !== a.score) return b.score - a.score;                 // スコア高いほど上位
+    return a.timeSec - b.timeSec;                                     // タイム短いほど上位
+  });
+
+  let html = '<table><thead><tr><th>#</th><th>難易度</th><th>スコア</th><th>タイム</th></tr></thead><tbody>';
+  sorted.forEach((r,i)=>{
+    html += '<tr><td>'+(i+1)+'</td><td>'+r.diffLabel+'</td><td class="num">'+r.score+'</td><td class="num">'+fmtTime(r.timeSec)+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+/* 初期表示 */
+renderDifficultyScreen();
+</script>
+</body>
+</html>
