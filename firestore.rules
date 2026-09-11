@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // users/{uid}: 本人のみ読み書き可能。
+    // semiconductor_count は「減らない」「1回の更新で増える量が
+    // 最高難易度のドロップ上限(3600)を超えない」ことだけルールで保証する。
+    // （本当のドロップ抽選そのものはクライアント側で行うため、
+    //  常に上限値ぴったりを送られる可能性はゼロにはできない）
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.display_name is string
+        && request.resource.data.display_name.size() <= 20
+        && request.resource.data.semiconductor_count == 0;
+
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.display_name is string
+        && request.resource.data.display_name.size() <= 20
+        && request.resource.data.semiconductor_count is int
+        && request.resource.data.semiconductor_count >= resource.data.semiconductor_count
+        && request.resource.data.semiconductor_count <= resource.data.semiconductor_count + 3600;
+
+      allow delete: if false;
+    }
+
+    // ranking_records: 誰でも閲覧可。
+    // 難易度ごとにスコア・タイムの現実的な範囲を決め打ちでチェックする。
+    // 一度書き込んだ記録は更新・削除不可（後から書き換え不可）。
+    match /ranking_records/{recordId} {
+      allow read: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.display_name is string
+        && request.resource.data.display_name.size() <= 20
+        && (
+          (request.resource.data.difficulty_id == 'n'
+            && request.resource.data.difficulty_index == 0
+            && request.resource.data.score >= 1000
+            && request.resource.data.score <= 1050
+            && request.resource.data.time_sec >= 15)
+          ||
+          (request.resource.data.difficulty_id == 'pn'
+            && request.resource.data.difficulty_index == 1
+            && request.resource.data.score >= 4000
+            && request.resource.data.score <= 4200
+            && request.resource.data.time_sec >= 45)
+          ||
+          (request.resource.data.difficulty_id == 'p'
+            && request.resource.data.difficulty_index == 2
+            && request.resource.data.score >= 12000
+            && request.resource.data.score <= 12600
+            && request.resource.data.time_sec >= 100)
+        );
+
+      allow update, delete: if false;
+    }
+  }
+}

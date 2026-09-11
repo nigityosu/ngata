@@ -1,0 +1,134 @@
+:root{
+  --bg:        #0D1117;
+  --panel:     #161B22;
+  --panel-2:   #1C2330;
+  --line:      #2A3140;
+  --text:      #E6EDF3;
+  --text-dim:  #8B95A5;
+  --n-color:   #4FC3F7; /* n型：電子（青） */
+  --p-color:   #FFB74D; /* p型：正孔（橙） */
+  --ok:        #4CAF50;
+  --danger:    #E5534B;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(79,195,247,0.07), transparent 40%),
+    radial-gradient(circle at 85% 90%, rgba(255,183,77,0.07), transparent 40%),
+    var(--bg);
+  color:var(--text);
+  font-family:"Hiragino Sans","Yu Gothic",system-ui,-apple-system,sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  padding:20px;
+}
+.num{ font-family:"SFMono-Regular",Consolas,"Courier New",monospace; }
+
+#app{
+  width:100%;
+  max-width:520px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  min-height:640px;
+  display:flex;
+  flex-direction:column;
+}
+.screen{ display:none; flex-direction:column; flex:1; padding:28px 24px; }
+.screen.active{ display:flex; }
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--line);
+}
+.brand{ font-size:15px; letter-spacing:0.02em; color:var(--text-dim); }
+.brand b{ color:var(--text); font-weight:600; }
+
+h1{ font-size:24px; margin:0 0 6px; font-weight:700; }
+h2{ font-size:18px; margin:0 0 14px; font-weight:600; }
+p.lead{ color:var(--text-dim); font-size:14px; line-height:1.7; margin:0 0 22px; }
+
+.stack{ display:flex; flex-direction:column; gap:10px; margin-top:auto; }
+.btn{
+  appearance:none; border:1px solid var(--line); background:var(--panel-2);
+  color:var(--text); padding:14px 16px; border-radius:10px; font-size:15px;
+  cursor:pointer; text-align:left; display:flex; justify-content:space-between; align-items:center;
+  transition:border-color .15s, background .15s;
+}
+.btn:hover{ border-color:var(--n-color); }
+.btn:disabled{ opacity:.4; cursor:not-allowed; }
+.btn.primary{ background:var(--n-color); color:#06202B; border-color:var(--n-color); font-weight:700; }
+.btn.primary:hover{ filter:brightness(1.08); }
+.btn.ghost{ background:transparent; }
+.btn small{ color:inherit; opacity:.65; font-weight:400; font-size:12px; }
+
+.choice-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+.chip{
+  border:1px solid var(--line); background:var(--panel-2); color:var(--text-dim);
+  padding:9px 14px; border-radius:999px; cursor:pointer; font-size:13px;
+}
+.chip.selected{ border-color:var(--p-color); color:var(--p-color); }
+
+/* --- ゲーム画面 --- */
+.hud{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.hud .score{ font-size:30px; font-weight:700; }
+.hud .timer{ font-size:16px; color:var(--text-dim); }
+.hud .dps{ font-size:12px; color:var(--n-color); }
+
+.gauge-wrap{ margin-bottom:18px; }
+.gauge-label{ display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+.gauge{ height:10px; border-radius:6px; background:var(--panel-2); border:1px solid var(--line); overflow:hidden; }
+.gauge-fill{ height:100%; background:linear-gradient(90deg,var(--n-color),var(--p-color)); width:0%; transition:width .15s; }
+
+.click-target{
+  width:150px; height:150px; margin:8px auto 20px; border-radius:16px;
+  background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; user-select:none; border:none;
+  box-shadow:0 6px 0 rgba(0,0,0,.35);
+  padding:0; overflow:hidden;
+}
+.click-target:active{ transform:translateY(4px); box-shadow:0 2px 0 rgba(0,0,0,.35); }
+
+.upgrades{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:190px; padding-right:2px; margin-bottom:14px; }
+.upg{
+  display:flex; justify-content:space-between; align-items:center;
+  border:1px solid var(--line); background:var(--panel-2); border-radius:8px;
+  padding:8px 10px; font-size:12.5px; cursor:pointer;
+}
+.upg:hover{ border-color:var(--p-color); }
+.upg:disabled, .upg.disabled{ opacity:.35; cursor:not-allowed; }
+.upg .u-name{ display:flex; flex-direction:column; text-align:left; }
+.upg .u-name b{ font-size:13px; }
+.upg .u-name span{ color:var(--text-dim); font-size:11px; }
+.upg .u-cost{ font-size:12px; color:var(--p-color); white-space:nowrap; padding-left:10px; }
+
+.foot-actions{ display:flex; gap:8px; margin-top:auto; }
+.foot-actions .btn{ flex:1; text-align:center; justify-content:center; }
+
+/* --- リザルト --- */
+.result-badge{
+  text-align:center; padding:26px 0 18px;
+}
+.result-badge .big{ font-size:22px; font-weight:700; margin-bottom:4px; }
+.result-badge.clear .big{ color:var(--ok); }
+.result-badge.fail .big{ color:var(--danger); }
+.result-rows{ border-top:1px solid var(--line); }
+.row{ display:flex; justify-content:space-between; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
+.row .k{ color:var(--text-dim); }
+.drop-banner{
+  margin:16px 0; padding:12px 14px; border-radius:10px;
+  background:rgba(255,183,77,0.12); border:1px solid var(--p-color); color:var(--p-color);
+  font-size:13px; text-align:center;
+}
+
+/* --- ランキング --- */
+table{ width:100%; border-collapse:collapse; font-size:13px; }
+th,td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+th{ color:var(--text-dim); font-weight:500; font-size:12px; }
+.empty-note{ color:var(--text-dim); font-size:13px; text-align:center; padding:30px 0; }
